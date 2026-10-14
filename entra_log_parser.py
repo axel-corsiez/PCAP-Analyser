@@ -22,7 +22,7 @@ Exemples d'utilisation :
 
     # Chercher toutes les connexions en échec pour un utilisateur
     python3 entra_log_parser.py InteractiveSignIns_*.json \
-        --search userPrincipalName=jdupont --search status.errorCode!=0
+        --search userPrincipalName==jdupont@contoso.com --search "status.errorCode>0"
 
     # Chercher les connexions depuis un pays, sur une période, format tableau
     python3 entra_log_parser.py *SignIns*.json \
@@ -43,7 +43,7 @@ import glob
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 # --- Champs de date utilisés par chaque type de log (du plus au moins prioritaire)
@@ -54,8 +54,11 @@ CHAMPS_DATE = [
     "timeStamp",
 ]
 
-# --- Opérateurs de comparaison acceptés dans --search (ordre important : ">=" avant "=")
-OPERATEURS = ["!=", ">=", "<=", "=", ">", "<", "~"]
+# --- Syntaxe d'un critère --search : champ OPÉRATEUR valeur
+#     ==  égal (exact)        =   contient           !=  ne contient pas
+#     ~   regex               !~  regex sans match   >  <  >=  <=  comparaison
+#     (même syntaxe que l'interface web entra_log_viewer.html)
+CRITERE_RE = re.compile(r"^\s*([\w.@$-]+)\s*(==|!=|!~|>=|<=|=|>|<|~)\s*(.*?)\s*$")
 
 
 def _est_numerique(valeur):
@@ -203,28 +206,32 @@ class EntraLog:
         """Teste un critère (chemin, operateur, attendu) sur un record."""
         chemin, operateur, attendu = critere
         valeurs = cls.resoudre(record, chemin)
+        negatif = operateur in ("!=", "!~")
         if not valeurs:
-            # un champ absent ne satisfait qu'un test de non-égalité
-            return operateur == "!="
+            # un champ absent ne satisfait qu'un test négatif
+            return negatif
 
-        # un record matche si AU MOINS une valeur du chemin satisfait le critère
+        # négatif : AUCUNE valeur ne doit correspondre ; sinon AU MOINS une
+        if negatif:
+            return all(cls._comparer(v, operateur, attendu, regex) for v in valeurs)
         return any(cls._comparer(v, operateur, attendu, regex) for v in valeurs)
 
     @staticmethod
     def _comparer(valeur, operateur, attendu, regex):
         """Compare une valeur unique à la valeur attendue selon l'opérateur."""
-        # opérateurs numériques
         if operateur in (">", "<", ">=", "<="):
-            try:
-                a, b = float(valeur), float(attendu)
-            except (TypeError, ValueError):
+            if valeur is None:
                 return False
+            if _est_numerique(valeur) and _est_numerique(attendu):
+                a, b = float(valeur), float(attendu)
+            else:
+                # comparaison textuelle : fonctionne aussi pour les dates ISO 8601
+                a, b = str(valeur), attendu
             return {">": a > b, "<": a < b, ">=": a >= b, "<=": a <= b}[operateur]
 
         texte = "" if valeur is None else str(valeur)
 
-        # opérateur regex explicite
-        if operateur == "~" or regex:
+        if operateur in ("~", "!~") or regex:
             try:
                 trouve = re.search(attendu, texte, re.IGNORECASE) is not None
             except re.error:
@@ -232,11 +239,13 @@ class EntraLog:
         elif _est_numerique(attendu) and _est_numerique(texte):
             # deux nombres : égalité exacte (évite que "0" matche "50126")
             trouve = float(texte) == float(attendu)
+        elif operateur == "==":
+            trouve = texte.lower() == attendu.lower()
         else:
-            # égalité = correspondance de sous-chaîne, insensible à la casse
+            # "=" et "!=" : correspondance de sous-chaîne, insensible à la casse
             trouve = attendu.lower() in texte.lower()
 
-        return not trouve if operateur == "!=" else trouve
+        return not trouve if operateur in ("!=", "!~") else trouve
 
     # ------------------------------------------------------------------ statistiques
     def statistiques(self):
@@ -350,13 +359,16 @@ def afficher(records, champs, fmt, limite):
 
 def parser_critere(expr):
     """Transforme une expression 'champ OP valeur' en tuple (champ, operateur, valeur)."""
-    for op in OPERATEURS:
-        if op in expr:
-            champ, valeur = expr.split(op, 1)
-            return (champ.strip(), op, valeur.strip())
-    raise argparse.ArgumentTypeError(
-        f"Critère invalide : '{expr}'. Utilisez champ=valeur, champ!=valeur, "
-        f"champ~regex, champ>valeur, etc.")
+    m = CRITERE_RE.match(expr)
+    if not m:
+        raise argparse.ArgumentTypeError(
+            f"Critère invalide : '{expr}'. Utilisez champ==valeur, champ=valeur, "
+            f"champ!=valeur, champ~regex, champ!~regex, champ>valeur, etc.")
+    champ, op, valeur = m.groups()
+    # on retire d'éventuels guillemets autour de la valeur
+    if len(valeur) >= 2 and valeur[0] == valeur[-1] and valeur[0] in "\"'":
+        valeur = valeur[1:-1]
+    return (champ, op, valeur)
 
 
 def parser_date(txt):
@@ -364,6 +376,14 @@ def parser_date(txt):
     dt = EntraLog._parse_date(txt)
     if dt is None:
         raise argparse.ArgumentTypeError(f"Date invalide : '{txt}' (attendu : YYYY-MM-DD)")
+    return dt
+
+
+def parser_date_fin(txt):
+    """Comme parser_date, mais une date seule (YYYY-MM-DD) inclut toute la journée."""
+    dt = parser_date(txt)
+    if len(txt.strip()) == 10:
+        dt += timedelta(days=1, microseconds=-1)
     return dt
 
 
@@ -376,14 +396,15 @@ def main():
                     help="Fichiers d'export JSON (les motifs type *SignIns*.json sont acceptés).")
     ap.add_argument("-s", "--search", action="append", default=[], type=parser_critere,
                     metavar="CHAMP=VALEUR",
-                    help="Critère de recherche (répétable). Opérateurs : = != ~ > < >= <=. "
-                         "Notation pointée pour les champs imbriqués (status.errorCode).")
+                    help="Critère de recherche (répétable). Opérateurs : == (égal) = (contient) "
+                         "!= ~ !~ > < >= <=. Notation pointée pour les champs imbriqués "
+                         "(status.errorCode).")
     ap.add_argument("--regex", action="store_true",
                     help="Interprète toutes les valeurs de --search comme des expressions régulières.")
     ap.add_argument("--from", dest="dt_from", type=parser_date, metavar="DATE",
                     help="Ne garder que les records à partir de cette date (YYYY-MM-DD).")
-    ap.add_argument("--to", dest="dt_to", type=parser_date, metavar="DATE",
-                    help="Ne garder que les records jusqu'à cette date (YYYY-MM-DD).")
+    ap.add_argument("--to", dest="dt_to", type=parser_date_fin, metavar="DATE",
+                    help="Ne garder que les records jusqu'à cette date incluse (YYYY-MM-DD).")
     ap.add_argument("-f", "--field", action="append", default=[], dest="champs",
                     metavar="CHAMP", help="Colonne à afficher (répétable, format tableau).")
     ap.add_argument("--format", choices=["table", "json", "count"], default="table",
