@@ -15,7 +15,7 @@
   --line: #dde2ea; --line-2: #c6cdd9;
   --accent: #2343a6; --accent-ink: #ffffff; --accent-weak: #e4e9f8; --hover: rgba(35, 67, 166, .06);
   --bad: #b3261e; --bad-weak: #fbe7e6; --good: #1b6b39; --good-weak: #e2f2e7; --warn: #835400; --warn-weak: #fbefd5;
-  --s-ok: #2a78d6; --s-fail: #d03b3b;
+  --s-ok: #2a78d6; --s-intr: #eda100; --s-fail: #d03b3b; --s-audit: #6250d6; --s-other: #98a1b0;
   --scrim: rgba(243, 245, 248, .92); --shadow: 0 16px 48px rgba(15, 22, 40, .18);
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-head: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -29,7 +29,7 @@
     --line: #2a303a; --line-2: #3a4250;
     --accent: #91a9ff; --accent-ink: #0f1217; --accent-weak: #1f2945; --hover: rgba(145, 169, 255, .08);
     --bad: #f08a84; --bad-weak: #3b1d1c; --good: #6fd093; --good-weak: #16301f; --warn: #eab75a; --warn-weak: #33280f;
-    --s-ok: #3987e5; --s-fail: #d03b3b;
+    --s-ok: #3987e5; --s-intr: #c98500; --s-fail: #d03b3b; --s-audit: #9085e9; --s-other: #6b7385;
     --scrim: rgba(15, 18, 23, .92); --shadow: 0 16px 48px rgba(0, 0, 0, .5);
   }
 }
@@ -40,7 +40,7 @@
   --line: #2a303a; --line-2: #3a4250;
   --accent: #91a9ff; --accent-ink: #0f1217; --accent-weak: #1f2945; --hover: rgba(145, 169, 255, .08);
   --bad: #f08a84; --bad-weak: #3b1d1c; --good: #6fd093; --good-weak: #16301f; --warn: #eab75a; --warn-weak: #33280f;
-  --s-ok: #3987e5; --s-fail: #d03b3b;
+  --s-ok: #3987e5; --s-intr: #c98500; --s-fail: #d03b3b; --s-audit: #9085e9; --s-other: #6b7385;
   --scrim: rgba(15, 18, 23, .92); --shadow: 0 16px 48px rgba(0, 0, 0, .5);
 }
 
@@ -162,20 +162,34 @@ h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; }
 .legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-.sw.ok { background: var(--s-ok); }
-.sw.fail { background: var(--s-fail); }
+.sw.s-ok { background: var(--s-ok); }
+.sw.s-intr { background: var(--s-intr); }
+.sw.s-fail { background: var(--s-fail); }
+.sw.s-audit { background: var(--s-audit); }
+.sw.s-other { background: var(--s-other); }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 
 /* Graphique */
-.chart { position: relative; min-height: 200px; }
+.chart { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+.chart-plot { position: relative; }
 .chart svg { display: block; width: 100%; height: auto; }
-.chart text { fill: var(--muted); font-family: var(--font-data); font-size: 11px; }
+.chart .ax { fill: var(--muted); font-family: var(--font-data); font-size: 11px; }
+.chart .lbl { fill: var(--ink-2); font-family: var(--font-ui); font-size: 12px; }
+.chart .val { fill: var(--ink); font-family: var(--font-data); font-size: 12px; font-variant-numeric: tabular-nums; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .axis { stroke: var(--line-2); stroke-width: 1; }
-.chart .b-ok { fill: var(--s-ok); }
-.chart .b-fail { fill: var(--s-fail); }
+.chart .s-ok { fill: var(--s-ok); }
+.chart .s-intr { fill: var(--s-intr); }
+.chart .s-fail { fill: var(--s-fail); }
+.chart .s-audit { fill: var(--s-audit); }
+.chart .s-other { fill: var(--s-other); }
 .chart .hl { fill: var(--hover); }
 .chart .hit { fill: transparent; cursor: pointer; }
+.chart-ctrl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+.chart-ctrl select { padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.chart-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-top: 10px; }
+.chart-foot .hint { margin: 0; }
+.chart-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .tip { position: absolute; top: 6px; pointer-events: none; background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; min-width: 170px; z-index: 2; }
 .tip strong { display: block; margin-bottom: 4px; font-weight: 600; }
 .tip .row { display: flex; justify-content: space-between; gap: 14px; }
@@ -256,6 +270,8 @@ pre.json { margin: 0; font-family: var(--font-data); font-size: 12px; line-heigh
 .modal-box p { color: var(--ink-2); margin: 6px 0 10px; }
 .modal-box textarea { width: 100%; height: 240px; font-family: var(--font-data); font-size: 12px; border: 1px solid var(--line-2); border-radius: 6px; padding: 8px; background: var(--surface-2); }
 .modal-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.modal-box.wide { width: min(1000px, 100%); max-height: calc(100vh - 32px); overflow: auto; }
+.modal-box img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
 
 @media (max-width: 1200px) {
   .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -374,6 +390,15 @@ pre.json { margin: 0; font-family: var(--font-data); font-size: 12px; line-heigh
   </div>
 </div>
 
+<div id="img-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="img-modal-title">
+  <div class="modal-box wide">
+    <h2 id="img-modal-title">Image du graphique</h2>
+    <p id="img-modal-text"></p>
+    <img id="img-modal-img" alt="Graphique exporté avec la recherche et les filtres">
+    <div class="modal-actions"><button type="button" class="btn" id="img-modal-close" data-action="close-img-modal">Fermer</button></div>
+  </div>
+</div>
+
 <div id="drop" class="drop" hidden><div>Déposez vos exports Entra ID (.json)</div></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
@@ -467,7 +492,7 @@ function haversine(lat1, lon1, lat2, lon2) {
    Lecture des fichiers d'export
    ================================================================ */
 function parseText(text) {
-  text = text.replace(/^﻿/, "").trim();
+  text = text.replace(/^\uFEFF/, "").trim();
   if (!text) return [];
   try {
     const d = JSON.parse(text);
@@ -968,7 +993,7 @@ const state = {
   typesOn: new Set(Object.keys(TYPES)),
   view: "overview", kind: "events", rows: [], cols: EVENT_COLS, meta: {},
   sort: { key: "date", dir: -1 }, page: 0, pageRows: [], last: null,
-  activePreset: null, current: null, counts: null, days: [], chartMode: "signin",
+  activePreset: null, current: null, counts: null, lastQuery: "", chartKind: "timeline", chartMeasure: null, chartSpec: null,
   settings: { home: "FR", bf: 5, spray: 5, vmax: 900 },
 };
 const SETTINGS_KEY = "entra-forensic-parametres";
@@ -1000,7 +1025,7 @@ function runSearch(meta) {
     else { state.activePreset = null; meta = { title: q ? "Recherche" : "Tous les événements", desc: "" }; }
   }
   const rows = baseEntries().filter(e => matches(e, parsed));
-  Object.assign(state, { view: "table", kind: "events", rows, cols: EVENT_COLS, meta, page: 0, sort: { key: "date", dir: -1 }, last: { type: "search", meta } });
+  Object.assign(state, { view: "table", kind: "events", rows, cols: EVENT_COLS, meta, page: 0, sort: { key: "date", dir: -1 }, last: { type: "search", meta }, lastQuery: q });
   sortRows();
   render();
 }
@@ -1008,7 +1033,8 @@ function runSearch(meta) {
 function runAnalysis(p) {
   const res = ANALYSES[p.fn](baseEntries(), state.settings);
   const meta = presetMeta(p);
-  Object.assign(state, { view: "table", kind: "analysis", rows: res.rows, cols: res.cols, meta, page: 0, sort: { key: null, dir: -1 }, last: { type: "analysis", preset: p } });
+  if (!res.cols.some(c => c.num && c.key === state.chartMeasure)) state.chartMeasure = (res.cols.find(c => c.num) || {}).key || null;
+  Object.assign(state, { view: "table", kind: "analysis", rows: res.rows, cols: res.cols, meta, page: 0, sort: { key: null, dir: -1 }, last: { type: "analysis", preset: p }, lastQuery: "" });
   render();
 }
 
@@ -1230,12 +1256,10 @@ function renderOverview(v) {
   const base = baseEntries();
   if (!base.length) {
     v.innerHTML = `<div class="empty"><p><strong>Aucun événement sur cette sélection.</strong></p><p>Réactivez un journal ou élargissez la période.</p></div>`;
-    state.days = [];
+    state.chartSpec = null;
     return;
   }
   const o = computeOverview(base);
-  state.days = o.days;
-  state.chartMode = o.signins ? "signin" : "audit";
   const pct = o.signins ? (o.fail / o.signins * 100) : 0;
   const pctTxt = pct > 0 && pct < 0.1 ? "< 0,1" : pct.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
   const period = Number.isFinite(o.min) ? `Du ${fmtDay(o.min)} au ${fmtDay(o.max)}` : "Période inconnue";
@@ -1253,14 +1277,7 @@ function renderOverview(v) {
       ${kpi("Pays", nf.format(o.countries.size), [...o.countries].sort().slice(0, 8).join(", ") || "aucune géolocalisation")}
       ${kpi("Période", `${nf.format(o.days.length)} j`, Number.isFinite(o.min) ? `${fmtDay(o.min)} → ${fmtDay(o.max)}` : "—")}
     </div>
-    <section class="panel">
-      <div class="panel-head">
-        <h3>${state.chartMode === "signin" ? "Connexions par jour" : "Événements d'audit par jour"}</h3>
-        ${state.chartMode === "signin" ? `<div class="legend"><span><i class="sw ok"></i>Succès</span><span><i class="sw fail"></i>Échecs réels</span></div>` : ""}
-      </div>
-      <div id="chart" class="chart"></div>
-      <p class="hint">Survolez une journée pour le détail, cliquez pour afficher ses événements.</p>
-    </section>
+    ${chartPanelHTML()}
     <div class="tops">
       ${topPanel("Comptes en échec", o.tops.failId, "Aucun échec sur la période.", x => x.f)}
       ${topPanel("IP en échec", o.tops.failIp, "Aucun échec sur la période.", "ipAddress")}
@@ -1269,10 +1286,10 @@ function renderOverview(v) {
       ${topPanel("Applications", o.tops.apps, "Aucune connexion.", "appDisplayName")}
       ${topPanel("Activités d'audit", o.tops.acts, "Aucun événement d'audit.", "activityDisplayName")}
     </div>`;
-  drawChart();
+  updateChart();
 }
 
-/* ---------- Graphique journalier ---------- */
+/* ---------- Graphiques (vue d'ensemble, recherches, analyses) ---------- */
 function niceTicks(max) {
   const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
   const step = Math.max(1, [1, 2, 5, 10].map(k => k * p).find(s => s >= raw) || 10 * p);
@@ -1284,67 +1301,427 @@ function roundTop(x, y, w, h, r) {
   r = Math.min(r, h, w / 2);
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
+function roundRight(x, y, w, h, r) {
+  r = Math.min(r, w, h / 2);
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
 const rectPath = (x, y, w, h) => `M${x},${y}H${x + w}V${y + h}H${x}Z`;
 
-function drawChart() {
-  const host = $("#chart");
-  if (!host || !state.days.length) return;
-  const days = state.days, signin = state.chartMode === "signin";
-  const W = Math.max(280, Math.floor(host.clientWidth || 600)), H = 200;
-  const m = { t: 12, r: 16, b: 24, l: 40 };
-  const iw = W - m.l - m.r, ih = H - m.t - m.b, baseY = m.t + ih;
-  const total = d => signin ? d.ok + d.fail : d.audit;
-  const ticks = niceTicks(Math.max(1, ...days.map(total)));
-  const top = ticks[ticks.length - 1];
-  const sy = v => v > 0 ? Math.max(2, v / top * ih) : 0;
-  const band = iw / days.length, bw = Math.max(1, Math.min(24, band * 0.7));
-  const every = Math.max(1, Math.ceil(days.length / Math.max(1, Math.floor(iw / 54))));
-  let grid = "", bars = "", labels = "", hits = "";
-  for (const t of ticks) {
-    const y = baseY - t / top * ih;
-    grid += `<line class="${t === 0 ? "axis" : "grid"}" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text x="${m.l - 6}" y="${y + 4}" text-anchor="end">${compact(t)}</text>`;
-  }
-  days.forEach((d, i) => {
-    const x = m.l + i * band + (band - bw) / 2;
-    if (signin) {
-      const h1 = sy(d.ok), h2 = sy(d.fail), gap = h1 && h2 ? 2 : 0;
-      if (h1) bars += `<path class="b-ok" d="${h2 ? rectPath(x, baseY - h1, bw, h1) : roundTop(x, baseY - h1, bw, h1, 4)}"/>`;
-      if (h2) bars += `<path class="b-fail" d="${roundTop(x, baseY - h1 - gap - h2, bw, h2, 4)}"/>`;
-    } else {
-      const h = sy(d.audit);
-      if (h) bars += `<path class="b-ok" d="${roundTop(x, baseY - h, bw, h, 4)}"/>`;
-    }
-    if (i % every === 0) labels += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d.key.slice(8, 10)}/${d.key.slice(5, 7)}</text>`;
-    hits += `<rect class="hit" data-i="${i}" x="${m.l + i * band}" y="${m.t}" width="${band}" height="${ih}"/>`;
-  });
-  const label = signin ? "Connexions réussies et en échec par jour" : "Événements d'audit par jour";
-  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${label}">${grid}<rect class="hl" x="0" y="${m.t}" width="0" height="${ih}"/>${bars}${labels}${hits}</svg><div class="tip" hidden></div>`;
+// Séries empilées, dans un ordre fixe : la couleur suit l'état, jamais le rang
+const SERIES = [
+  { key: "ok", label: "Succès", cls: "s-ok" },
+  { key: "intr", label: "Interruptions", cls: "s-intr" },
+  { key: "fail", label: "Échecs", cls: "s-fail" },
+  { key: "audit", label: "Audit", cls: "s-audit" },
+  { key: "other", label: "Autres", cls: "s-other" },
+];
+function seriesOf(e) {
+  if (e.type === "audit") return "audit";
+  const c = code(e);
+  return c === null ? "other" : c === 0 ? "ok" : INTERRUPTS.has(c) ? "intr" : "fail";
+}
+const CHART_KINDS = [
+  { id: "timeline", label: "Chronologie" },
+  { id: "hours", label: "Heure de la journée (UTC)" },
+  { id: "who", label: "Par compte", title: "Événements par compte", col: "Compte", get: e => rowView(e).who, field: e => rowView(e).whoField },
+  { id: "ip", label: "Par adresse IP", title: "Événements par adresse IP", col: "Adresse IP", get: e => rowView(e).ip, field: e => rowView(e).ipField },
+  { id: "country", label: "Par pays", title: "Événements par pays", col: "Pays", get: e => rowView(e).country, field: () => "location.countryOrRegion" },
+  { id: "what", label: "Par application ou activité", title: "Événements par application ou activité", col: "Application / activité", get: e => rowView(e).what, field: e => rowView(e).whatField },
+  { id: "code", label: "Par code d'erreur", title: "Événements par code d'erreur", col: "Code d'erreur", get: e => { const c = code(e); return c === null ? "" : String(c); }, field: () => "status.errorCode", fmt: k => `${k} · ${AADSTS[k] || "code non répertorié"}` },
+  { id: "client", label: "Par client", title: "Événements par client", col: "Client", get: e => e.rec.clientAppUsed || "", field: () => "clientAppUsed" },
+  { id: "os", label: "Par système", title: "Événements par système d'exploitation", col: "Système", get: e => (e.rec.deviceDetail && e.rec.deviceDetail.operatingSystem) || "", field: () => "deviceDetail.operatingSystem" },
+  { id: "journal", label: "Par journal", title: "Événements par journal", col: "Journal", get: e => e.type, field: () => "journal", fmt: k => TYPES[k] ? TYPES[k].label : k },
+];
+const TOP_N = 15;
+const emptyVals = () => ({ ok: 0, intr: 0, fail: 0, audit: 0, other: 0 });
+const lcFirst = s => /^[A-ZÉ][a-zàâçéèêëîïôûùüÿ]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 
-  const svg = host.querySelector("svg"), tip = host.querySelector(".tip"), hl = svg.querySelector(".hl");
+function eventChartSpec(kindId, entries) {
+  const kind = CHART_KINDS.find(k => k.id === kindId) || CHART_KINDS[0];
+  const present = new Set();
+  const add = (c, e) => { const s = seriesOf(e); c.vals[s]++; c.total++; present.add(s); };
+  let spec;
+  if (kind.id === "timeline") {
+    let min = Infinity, max = -Infinity;
+    for (const e of entries) if (Number.isFinite(e.ts)) { if (e.ts < min) min = e.ts; if (e.ts > max) max = e.ts; }
+    if (!Number.isFinite(min)) return null;
+    const hourly = max - min <= 3 * DAY, step = hourly ? 36e5 : DAY;
+    const start = hourly ? Math.floor(min / 36e5) * 36e5 : Date.parse(dayKey(min) + "T00:00:00Z");
+    const n = Math.min(2000, Math.floor((max - start) / step) + 1);
+    const cats = Array.from({ length: n }, (_, i) => {
+      const t = start + i * step, d = new Date(t), h = pad(d.getUTCHours()), dm = `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+      return {
+        key: t, day: dayKey(t), vals: emptyVals(), total: 0,
+        label: hourly ? (h === "00" ? dm : `${h}h`) : dm,
+        long: hourly ? `${fmtDayLong(dayKey(t))}, ${h}:00–${h}:59` : fmtDayLong(dayKey(t)),
+        data: hourly ? `${dayKey(t)} ${h}:00` : dayKey(t),
+      };
+    });
+    for (const e of entries) { if (!Number.isFinite(e.ts)) continue; const c = cats[Math.floor((e.ts - start) / step)]; if (c) add(c, e); }
+    spec = { type: "columns", cats, drill: "day", catLabel: hourly ? "Heure (UTC)" : "Jour (UTC)",
+      title: hourly ? "Événements par heure (UTC)" : "Événements par jour (UTC)",
+      hint: "Survolez une barre pour le détail, cliquez pour afficher la journée." };
+  } else if (kind.id === "hours") {
+    const cats = Array.from({ length: 24 }, (_, h) => ({ key: h, label: pad(h), long: `${pad(h)}:00–${pad(h)}:59 UTC`, data: `${pad(h)}:00`, vals: emptyVals(), total: 0 }));
+    for (const e of entries) if (Number.isFinite(e.ts)) add(cats[new Date(e.ts).getUTCHours()], e);
+    spec = { type: "columns", cats, drill: null, catLabel: "Heure (UTC)", title: "Événements par heure de la journée (UTC)",
+      hint: "Repérez l'activité en dehors des heures de bureau." };
+  } else {
+    const m = new Map();
+    let empty = 0;
+    for (const e of entries) {
+      const v = kind.get(e);
+      if (v === "" || v === null || v === undefined) { empty++; continue; }
+      const k = String(v);
+      let c = m.get(k);
+      if (!c) { const lbl = kind.fmt ? kind.fmt(k) : k; m.set(k, (c = { key: k, label: lbl, long: lbl, data: lbl, field: kind.field(e), vals: emptyVals(), total: 0 })); }
+      add(c, e);
+    }
+    const all = [...m.values()].sort((a, b) => b.total - a.total || coll.compare(a.label, b.label));
+    spec = { type: "bars", cats: all.slice(0, TOP_N), drill: "filter", catLabel: kind.col,
+      title: `${kind.title} (${all.length > TOP_N ? `${TOP_N} premières valeurs sur ${nf.format(all.length)}` : `${nf.format(all.length)} valeur${all.length > 1 ? "s" : ""}`})`,
+      hint: "Cliquez sur une barre pour filtrer sur cette valeur.",
+      note: empty ? `${nf.format(empty)} événement${empty > 1 ? "s" : ""} sans valeur pour ce critère` : "" };
+  }
+  spec.series = SERIES.filter(s => present.has(s.key));
+  spec.legend = true;  // même avec un seul état, la légende dit s'il s'agit de succès ou d'échecs
+  return spec;
+}
+
+function analysisChartSpec() {
+  const cols = state.cols, lc = cols[0];
+  const m = cols.find(c => c.key === state.chartMeasure && c.num) || cols.find(c => c.num);
+  if (!m || !lc || !state.rows.length) return null;
+  const rows = [...state.rows].sort((a, b) => (b[m.key] || 0) - (a[m.key] || 0)).slice(0, TOP_N);
+  const seen = new Map();
+  for (const r of rows) { const k = String(r[lc.key]); seen.set(k, (seen.get(k) || 0) + 1); }
+  const second = cols.slice(1).find(c => !c.num);
+  const cats = rows.map((r, i) => {
+    let label = String(r[lc.key]);
+    if (seen.get(label) > 1 && second && r[second.key] != null) label += ` · ${fmtCell(r[second.key], second)}`;
+    return { key: i, label, long: label, data: label, value: String(r[lc.key]),
+      field: lc.pivot || (lc.pivotFrom && r[lc.pivotFrom]) || null, vals: { v: r[m.key] || 0 }, total: r[m.key] || 0 };
+  });
+  const more = state.rows.length > TOP_N ? ` (${TOP_N} premières lignes sur ${nf.format(state.rows.length)})` : "";
+  return { type: "bars", cats, drill: "pivot", catLabel: lc.label, series: [{ key: "v", label: m.label, cls: "s-ok" }],
+    title: `${m.label} par ${lcFirst(lc.label)}${more}`, hint: "Cliquez sur une barre pour afficher les événements correspondants.", note: "" };
+}
+
+let measureCtx = null;
+function textWidth(s, font) {
+  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+  measureCtx.font = font;
+  return measureCtx.measureText(s).width;
+}
+function fitText(s, max, font) {
+  s = String(s);
+  if (textWidth(s, font) <= max) return s;
+  let lo = 0, hi = s.length;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (textWidth(s.slice(0, mid) + "…", font) <= max) lo = mid; else hi = mid - 1; }
+  return s.slice(0, lo) + "…";
+}
+
+// exp = null à l'écran ; { col, fonts } à l'export, pour des couleurs et polices explicites
+function chartSVG(spec, W, exp) {
+  const fUI = exp ? exp.fonts.ui : getComputedStyle(document.body).fontFamily;
+  const segs = c => spec.series.filter(s => c.vals[s.key] > 0);
+  const hits = [];
+  let H, body = "";
+  if (spec.type === "columns") {
+    H = 220;
+    const m = { t: 12, r: 16, b: 24, l: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b, baseY = m.t + ih, n = spec.cats.length;
+    const ticks = niceTicks(Math.max(1, ...spec.cats.map(c => c.total))), top = ticks[ticks.length - 1];
+    const sy = v => v > 0 ? Math.max(2, v / top * ih) : 0;
+    const band = iw / n, bw = Math.max(1, Math.min(24, band * 0.7));
+    const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(iw / 54))));
+    for (const t of ticks) {
+      const y = baseY - t / top * ih;
+      body += `<line class="${t === 0 ? "axis" : "grid"}" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${compact(t)}</text>`;
+    }
+    spec.cats.forEach((c, i) => {
+      const x = m.l + i * band + (band - bw) / 2, ss = segs(c);
+      let y = baseY;
+      ss.forEach((s, j) => {
+        const h = sy(c.vals[s.key]), last = j === ss.length - 1;
+        y -= h;
+        body += `<path class="${s.cls}" d="${last ? roundTop(x, y, bw, h, 4) : rectPath(x, y, bw, h)}"/>`;
+        if (!last) y -= 2;
+      });
+      if (i % every === 0) body += `<text class="ax" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(c.label)}</text>`;
+      hits.push({ i, x: m.l + i * band, y: m.t, w: band, h: ih });
+    });
+  } else {
+    const n = spec.cats.length, rowH = 28, barH = 16;
+    H = n * rowH + 4;
+    const labelW = Math.round(Math.min(260, Math.max(100, W * 0.3))), valueW = 64;
+    const x0 = labelW + 10, pw = Math.max(40, W - x0 - valueW);
+    const max = Math.max(1, ...spec.cats.map(c => c.total)), font = `12px ${fUI}`;
+    body += `<line class="axis" x1="${x0}" x2="${x0}" y1="0" y2="${H}"/>`;
+    spec.cats.forEach((c, i) => {
+      const yTop = i * rowH, yBar = yTop + (rowH - barH) / 2, ss = segs(c);
+      body += `<text class="lbl" x="${labelW}" y="${yTop + rowH / 2 + 4}" text-anchor="end">${esc(fitText(c.label, labelW - 4, font))}</text>`;
+      let x = x0;
+      ss.forEach((s, j) => {
+        const w = Math.max(2, c.vals[s.key] / max * pw), last = j === ss.length - 1;
+        body += `<path class="${s.cls}" d="${last ? roundRight(x, yBar, w, barH, 4) : rectPath(x, yBar, w, barH)}"/>`;
+        x += w + (last ? 0 : 2);
+      });
+      body += `<text class="val" x="${x + 6}" y="${yTop + rowH / 2 + 4}">${nf.format(c.total)}</text>`;
+      hits.push({ i, x: 0, y: yTop, w: W, h: rowH });
+    });
+  }
+  const style = exp
+    ? `<style>.grid{stroke:${exp.col.line}}.axis{stroke:${exp.col.line2}}.ax{fill:${exp.col.muted};font:11px ${exp.fonts.data}}.lbl{fill:${exp.col.ink2};font:12px ${exp.fonts.ui}}.val{fill:${exp.col.ink};font:12px ${exp.fonts.data}}${SERIES.map(s => `.${s.cls}{fill:${exp.col[s.key]}}`).join("")}</style>`
+    : "";
+  const hl = exp ? "" : `<rect class="hl" x="0" y="0" width="0" height="0"/>`;
+  const hitRects = exp ? "" : hits.map(h => `<rect class="hit" data-i="${h.i}" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}"/>`).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(spec.title)}">${style}${hl}${body}${hitRects}</svg>`;
+  return { svg, H, hits };
+}
+
+function tooltipHTML(spec, c) {
+  const multi = spec.series.length > 1;
+  const row = (cls, name, n) => `<div class="row"><span>${cls ? `<i class="sw ${cls}"></i>` : ""}${esc(name)}</span><span>${nf.format(n)}</span></div>`;
+  let h = `<strong>${esc(c.long)}</strong>`;
+  for (const s of spec.series) h += row(multi ? s.cls : "", s.label, c.vals[s.key] || 0);
+  if (multi) h += row("", "Total", c.total);
+  const foot = spec.drill === "day" ? "Cliquer pour afficher la journée" : spec.drill && c.field ? "Cliquer pour filtrer sur cette valeur" : "";
+  return h + (foot ? `<div class="foot">${foot}</div>` : "");
+}
+function mountChart(host, spec) {
+  const W = Math.max(280, Math.floor(host.clientWidth || 600));
+  const { svg, hits } = chartSVG(spec, W, null);
+  const legend = spec.series.length > 1 || spec.legend ? `<div class="legend">${spec.series.map(s => `<span><i class="sw ${s.cls}"></i>${esc(s.label)}</span>`).join("")}</div>` : "";
+  host.innerHTML = `${legend}<div class="chart-plot">${svg}<div class="tip" hidden></div></div>`;
+  const plot = host.querySelector(".chart-plot"), svgEl = plot.querySelector("svg"), tip = plot.querySelector(".tip"), hl = svgEl.querySelector(".hl");
   const hide = () => { tip.hidden = true; hl.setAttribute("width", 0); };
-  svg.addEventListener("pointermove", ev => {
+  svgEl.addEventListener("pointermove", ev => {
     const hit = ev.target.closest(".hit");
     if (!hit) { hide(); return; }
-    const i = +hit.dataset.i, d = days[i];
-    hl.setAttribute("x", m.l + i * band); hl.setAttribute("width", band);
-    const row = (sw, name, n) => `<div class="row"><span>${sw ? `<i class="sw ${sw}"></i>` : ""}${name}</span><span>${nf.format(n)}</span></div>`;
-    tip.innerHTML = `<strong>${esc(fmtDayLong(d.key))}</strong>` +
-      (signin ? row("ok", "Succès", d.ok) + row("fail", "Échecs réels", d.fail) + row("", "Interruptions", d.intr) : "") +
-      row(signin ? "" : "ok", "Audit", d.audit) + `<div class="foot">Cliquer pour voir la journée</div>`;
+    const i = +hit.dataset.i, b = hits[i];
+    hl.setAttribute("x", b.x); hl.setAttribute("y", b.y); hl.setAttribute("width", b.w); hl.setAttribute("height", b.h);
+    tip.innerHTML = tooltipHTML(spec, spec.cats[i]);
     tip.hidden = false;
-    const scale = host.clientWidth / W, bx = (m.l + i * band) * scale, tw = tip.offsetWidth;
-    tip.style.left = `${i > days.length / 2 ? Math.max(0, bx - tw - 8) : Math.min(host.clientWidth - tw, bx + band * scale + 8)}px`;
+    const pw = plot.clientWidth, k = pw / W, tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (spec.type === "columns") {
+      const bx = b.x * k;
+      tip.style.left = `${i > spec.cats.length / 2 ? Math.max(0, bx - tw - 8) : Math.min(pw - tw, bx + b.w * k + 8)}px`;
+      tip.style.top = "6px";
+    } else {
+      const r = plot.getBoundingClientRect(), below = (b.y + b.h) * k + 4;
+      tip.style.left = `${Math.max(0, Math.min(pw - tw, ev.clientX - r.left + 14))}px`;
+      tip.style.top = `${below + th > plot.clientHeight ? Math.max(0, b.y * k - th - 4) : below}px`;
+    }
   });
-  svg.addEventListener("pointerleave", hide);
-  svg.addEventListener("click", ev => {
+  svgEl.addEventListener("pointerleave", hide);
+  svgEl.addEventListener("click", ev => {
     const hit = ev.target.closest(".hit");
-    if (!hit) return;
-    const key = days[+hit.dataset.i].key;
-    $("#from").value = key; $("#to").value = key; $("#q").value = "";
-    state.activePreset = null;
-    scheduleCounts();
-    runSearch({ title: `Journée du ${fmtDayLong(key)}`, desc: "Tous les événements de la journée (UTC). Effacez les dates ou cliquez sur Réinitialiser pour revenir à toute la période." });
+    if (hit) chartDrill(spec, spec.cats[+hit.dataset.i]);
   });
+}
+
+function chartDrill(spec, c) {
+  if (spec.drill === "day") {
+    $("#from").value = c.day; $("#to").value = c.day;
+    scheduleCounts();
+    if (state.view === "overview") {
+      $("#q").value = ""; state.activePreset = null;
+      runSearch({ title: `Journée du ${fmtDayLong(c.day)}`, desc: "Tous les événements de la journée (UTC). Effacez les dates ou cliquez sur Réinitialiser pour revenir à toute la période." });
+    } else {
+      $("#q").value = state.lastQuery;
+      runSearch(state.meta);
+    }
+  } else if (spec.drill === "filter" && c.field) {
+    if (state.view === "overview") { pivot(c.field, c.key); return; }
+    $("#q").value = [state.lastQuery, `${c.field}==${c.key}`].filter(Boolean).join("; ");
+    runSearch({ ...state.meta, title: `${state.meta.title} · ${c.label}` });
+  } else if (spec.drill === "pivot" && c.field) {
+    pivot(c.field, c.value);
+  }
+}
+
+function chartPanelHTML() {
+  let ctrl;
+  if (state.view === "table" && state.kind === "analysis") {
+    const nums = state.cols.filter(c => c.num);
+    if (!nums.length) return "";
+    ctrl = `<label for="chart-measure">Mesure</label><select id="chart-measure">${nums.map(c => `<option value="${esc(c.key)}"${c.key === state.chartMeasure ? " selected" : ""}>${esc(c.label)}</option>`).join("")}</select>`;
+  } else {
+    ctrl = `<label for="chart-kind">Afficher</label><select id="chart-kind">${CHART_KINDS.map(k => `<option value="${k.id}"${k.id === state.chartKind ? " selected" : ""}>${esc(k.label)}</option>`).join("")}</select>`;
+  }
+  return `<section class="panel chart-panel" aria-labelledby="chart-title">
+      <div class="panel-head"><h3 id="chart-title">Graphique</h3><div class="chart-ctrl">${ctrl}</div></div>
+      <div id="chart" class="chart"></div>
+      <div class="chart-foot">
+        <p id="chart-hint" class="hint"></p>
+        <div class="chart-actions">
+          <button type="button" class="btn" data-action="chart-png">${CAN_DOWNLOAD ? "Télécharger en PNG" : "Image PNG"}</button>
+          <button type="button" class="btn" data-action="chart-copy">Copier l'image</button>
+          <button type="button" class="btn" data-action="chart-data">Copier les données</button>
+        </div>
+      </div>
+    </section>`;
+}
+function updateChart() {
+  const host = $("#chart");
+  if (!host) { state.chartSpec = null; return; }
+  const spec = state.view === "overview" ? eventChartSpec(state.chartKind, baseEntries())
+    : state.kind === "events" ? eventChartSpec(state.chartKind, state.rows) : analysisChartSpec();
+  state.chartSpec = spec && spec.cats.length ? spec : null;
+  $("#chart-title").textContent = spec ? spec.title : "Graphique";
+  $("#chart-hint").textContent = spec ? [spec.hint, spec.note].filter(Boolean).join(" · ") : "";
+  if (!state.chartSpec) { host.innerHTML = '<p class="nil-msg">Rien à représenter pour ce choix.</p>'; return; }
+  mountChart(host, state.chartSpec);
+}
+
+/* ---------- Export des graphiques : PNG, image copiée, données ---------- */
+const fmtIsoDay = k => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
+function exportContext() {
+  const ov = state.view === "overview", an = !ov && state.kind === "analysis";
+  const list = ov || an ? baseEntries() : state.rows;
+  let min = Infinity, max = -Infinity;
+  for (const e of list) if (Number.isFinite(e.ts)) { if (e.ts < min) min = e.ts; if (e.ts > max) max = e.ts; }
+  const lines = [];
+  if (an) lines.push(["Analyse", state.meta.title]);
+  else lines.push(["Recherche", (!ov && state.lastQuery) || "aucun critère", !ov && !!state.lastQuery]);
+  if (!ov && state.meta.attack) lines.push(["MITRE ATT&CK", state.meta.attack]);
+  const f = $("#from").value, t = $("#to").value;
+  const range = Number.isFinite(min) ? `données du ${fmtDay(min)} au ${fmtDay(max)}` : "";
+  const filt = f || t ? `${f ? `du ${fmtIsoDay(f)}` : "depuis le début"} ${t ? `au ${fmtIsoDay(t)}` : "jusqu'à la fin"}` : "toute la période";
+  lines.push(["Période (UTC)", range ? `${filt} · ${range}` : filt]);
+  const present = Object.keys(TYPES).filter(k => state.entries.some(e => e.type === k));
+  const on = present.filter(k => state.typesOn.has(k));
+  lines.push(["Journaux", on.length === present.length ? `tous (${on.map(k => TYPES[k].label.toLowerCase()).join(", ")})` : (on.map(k => TYPES[k].label).join(", ") || "aucun")]);
+  const n = an ? state.rows.length : list.length;
+  lines.push(["Résultats", `${nf.format(n)} ${an ? "ligne" : "événement"}${n > 1 ? "s" : ""}`]);
+  lines.push(["Sources", state.sample ? "jeu d'exemple fictif (tenant exemple.fr)"
+    : state.files.slice(0, 4).map(x => x.name).join(", ") + (state.files.length > 4 ? ` et ${state.files.length - 4} autre(s)` : "")]);
+  lines.push(["Exporté le", `${fmtDate(Date.now())} UTC`]);
+  return { title: ov ? "Vue d'ensemble" : state.meta.title, lines };
+}
+function chartTSV(spec) {
+  const info = exportContext(), multi = spec.series.length > 1;
+  const cell = v => { let s = valueText(v).replace(/[\t\r\n]+/g, " "); if (/^[=+@]/.test(s) || (/^-/.test(s) && !isNum(s))) s = "'" + s; return s; };
+  const rows = [["Forensic des logs Entra", info.title], ["Graphique", spec.title], ...info.lines.map(([k, v]) => [k, v])];
+  if (spec.note) rows.push(["Remarque", spec.note]);
+  rows.push([], [spec.catLabel, ...spec.series.map(s => s.label), ...(multi ? ["Total"] : [])]);
+  for (const c of spec.cats) rows.push([c.data, ...spec.series.map(s => c.vals[s.key] || 0), ...(multi ? [c.total] : [])]);
+  return rows.map(r => r.map(cell).join("\t")).join("\r\n");
+}
+const loadImage = src => new Promise((res, rej) => {
+  const i = new Image();
+  i.onload = () => res(i);
+  i.onerror = () => rej(new Error("rendu du graphique impossible"));
+  i.src = src;
+});
+function wrapText(cx, text, maxW) {
+  const out = [];
+  let line = "";
+  for (const tok of String(text).match(/\S+\s*|\s+/g) || [""]) {
+    if (cx.measureText(line + tok).width <= maxW) { line += tok; continue; }
+    if (line.trim()) out.push(line.trimEnd());
+    let t = tok;
+    while (t && cx.measureText(t.trimEnd()).width > maxW) {
+      let k = t.length - 1;
+      while (k > 1 && cx.measureText(t.slice(0, k)).width > maxW) k--;
+      out.push(t.slice(0, k));
+      t = t.slice(k);
+    }
+    line = t;
+  }
+  if (line.trim() || !out.length) out.push(line.trimEnd());
+  return out;
+}
+async function buildChartPng(spec) {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  const cs = getComputedStyle(document.documentElement), tok = n => cs.getPropertyValue(n).trim();
+  const col = { bg: tok("--surface"), ink: tok("--ink"), ink2: tok("--ink-2"), muted: tok("--muted"), line: tok("--line"), line2: tok("--line-2") };
+  for (const s of SERIES) col[s.key] = tok(`--${s.cls}`);
+  const fonts = { ui: tok("--font-ui"), head: tok("--font-head"), data: tok("--font-data") };
+  const W = 1120, P = 36, IW = W - 2 * P, KEY = 150, S = 2;
+  const chart = chartSVG(spec, IW, { col, fonts });
+  const img = await loadImage("data:image/svg+xml;charset=utf-8," + encodeURIComponent(chart.svg));
+  const info = exportContext();
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d");
+  const F = { title: `600 22px ${fonts.head}`, sub: `500 15px ${fonts.ui}`, key: `12.5px ${fonts.ui}`, val: `13px ${fonts.ui}`, mono: `12.5px ${fonts.data}`, foot: `11.5px ${fonts.ui}` };
+  cx.font = F.title; const tl = wrapText(cx, info.title, IW);
+  cx.font = F.sub; const sl = wrapText(cx, spec.title, IW);
+  const meta = info.lines.map(([k, v, mono]) => { cx.font = mono ? F.mono : F.val; return { k, mono, lines: wrapText(cx, v, IW - KEY) }; });
+  const legendH = spec.series.length > 1 || spec.legend ? 26 : 0;
+  const metaH = meta.reduce((a, m) => a + m.lines.length * 19, 0);
+  const H = P + tl.length * 28 + sl.length * 21 + 18 + metaH + 12 + legendH + chart.H + 14 + 16 + P;
+  cv.width = W * S; cv.height = Math.ceil(H * S);
+  cx.scale(S, S);
+  cx.fillStyle = col.bg; cx.fillRect(0, 0, W, H);
+  cx.textBaseline = "top";
+  let y = P;
+  cx.fillStyle = col.ink; cx.font = F.title;
+  for (const l of tl) { cx.fillText(l, P, y); y += 28; }
+  cx.fillStyle = col.ink2; cx.font = F.sub;
+  for (const l of sl) { cx.fillText(l, P, y); y += 21; }
+  y += 8;
+  cx.fillStyle = col.line; cx.fillRect(P, y, IW, 1);
+  y += 10;
+  for (const m of meta) {
+    cx.fillStyle = col.muted; cx.font = F.key; cx.fillText(m.k, P, y + 1);
+    cx.fillStyle = col.ink; cx.font = m.mono ? F.mono : F.val;
+    for (const l of m.lines) { cx.fillText(l, P + KEY, y); y += 19; }
+  }
+  y += 12;
+  if (legendH) {
+    let x = P;
+    cx.font = F.key;
+    for (const s of spec.series) {
+      cx.fillStyle = col[s.key]; cx.fillRect(x, y + 2, 10, 10); x += 16;
+      cx.fillStyle = col.ink2; cx.fillText(s.label, x, y); x += cx.measureText(s.label).width + 18;
+    }
+    y += legendH;
+  }
+  cx.drawImage(img, P, y, IW, chart.H);
+  y += chart.H + 14;
+  cx.fillStyle = col.muted; cx.font = F.foot;
+  cx.fillText(["Forensic des logs Entra", spec.note, "heures en UTC"].filter(Boolean).join(" · "), P, y);
+  return new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error("conversion PNG impossible"))), "image/png"));
+}
+function chartFileBase(spec) {
+  return `entra_${slug(state.view === "overview" ? "vue-ensemble" : state.meta.title)}_${slug(spec.title.replace(/\(.*\)/, ""))}_${new Date().toISOString().slice(0, 10)}`;
+}
+function showImage(png, why) {
+  png.then(b => {
+    const img = $("#img-modal-img");
+    if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+    img.dataset.url = URL.createObjectURL(b);
+    img.src = img.dataset.url;
+    $("#img-modal-text").textContent = why === "copy"
+      ? "La copie automatique d'image n'est pas autorisée ici. Faites un clic droit sur l'image puis « Copier l'image » (appui long sur mobile)."
+      : "Le téléchargement direct n'est pas disponible ici. Faites un clic droit sur l'image puis « Enregistrer l'image sous… » (appui long sur mobile).";
+    $("#img-modal").hidden = false;
+    $("#img-modal-close").focus();
+  }, err => toast(`Export impossible : ${err.message}`));
+}
+function chartExport(kind) {
+  const spec = state.chartSpec;
+  if (!spec || !spec.cats.length) { toast("Aucun graphique à exporter."); return; }
+  if (kind === "data") {
+    copyText(chartTSV(spec), `Données du graphique copiées (${nf.format(spec.cats.length)} lignes), prêtes à coller dans Excel.`);
+    return;
+  }
+  const png = buildChartPng(spec);
+  if (kind === "png") {
+    if (CAN_DOWNLOAD) png.then(b => { saveBlob(b, `${chartFileBase(spec)}.png`); toast("Image PNG téléchargée."); }, err => toast(`Export impossible : ${err.message}`));
+    else showImage(png, "save");
+    return;
+  }
+  // l'image est passée en promesse : obligatoire pour Safari, qui exige un appel synchrone au clic
+  let started = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
+      navigator.clipboard.write([new ClipboardItem({ "image/png": png })])
+        .then(() => toast("Image copiée : collez-la dans votre rapport ou votre messagerie."), () => showImage(png, "copy"));
+      started = true;
+    }
+  } catch (_) { /* repli ci-dessous */ }
+  if (!started) showImage(png, "copy");
 }
 
 /* ---------- Tableau de résultats ---------- */
@@ -1410,6 +1787,7 @@ function renderTable(v) {
         <span class="count"><strong>${nf.format(rows.length)}</strong> ${unit}${rows.length > 1 ? "s" : ""}</span>
       </div>
     </div>
+    ${rows.length ? chartPanelHTML() : ""}
     <div class="toolbar">
       <button type="button" class="btn" data-action="copy-csv"${rows.length ? "" : " disabled"}>Copier en CSV</button>
       ${CAN_DOWNLOAD ? `<button type="button" class="btn" data-action="dl-csv"${rows.length ? "" : " disabled"}>Télécharger le CSV</button>` : ""}
@@ -1417,6 +1795,7 @@ function renderTable(v) {
     </div>
     ${rows.length ? `<div class="table-wrap"><table class="res ${kind}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${pager(pages)}`
       : `<div class="empty"><p><strong>Aucun résultat.</strong></p><p>Élargissez la période, réactivez des journaux ou retirez un critère de la recherche.</p></div>`}`;
+  updateChart();
 }
 
 /* ---------- Tiroir de détail ---------- */
@@ -1472,14 +1851,16 @@ function buildCSV() {
   return lines.join("\r\n");
 }
 const slug = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "export";
-function downloadCSV() {
-  const blob = new Blob(["﻿" + buildCSV()], { type: "text/csv;charset=utf-8" });
+function saveBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `entra_${slug(state.meta.title)}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+function downloadCSV() {
+  saveBlob(new Blob(["\uFEFF" + buildCSV()], { type: "text/csv;charset=utf-8" }), `entra_${slug(state.meta.title)}_${new Date().toISOString().slice(0, 10)}.csv`);
   toast(`CSV téléchargé (${nf.format(state.rows.length)} lignes).`);
 }
 function copyText(text, okMsg) {
@@ -1752,6 +2133,10 @@ function action(a) {
     case "copy-json": if (state.current) copyText(JSON.stringify(state.current.rec, null, 2), "JSON copié."); break;
     case "close-drawer": closeDrawer(); break;
     case "close-modal": $("#modal").hidden = true; break;
+    case "close-img-modal": $("#img-modal").hidden = true; break;
+    case "chart-png": chartExport("png"); break;
+    case "chart-copy": chartExport("copy"); break;
+    case "chart-data": chartExport("data"); break;
     case "clear": state.entries = []; state.files = []; state.sample = false; state.view = "overview"; state.last = null; closeDrawer(); render(); scheduleCounts(); break;
     case "sample": loadSample(); render(); scheduleCounts(); break;
   }
@@ -1782,8 +2167,17 @@ document.addEventListener("click", ev => {
   if (row) openDrawer(state.pageRows[+row.dataset.row]);
 });
 document.addEventListener("keydown", ev => {
-  if (ev.key === "Escape") { if (!$("#modal").hidden) $("#modal").hidden = true; else if (!$("#drawer").hidden) closeDrawer(); return; }
+  if (ev.key === "Escape") {
+    if (!$("#img-modal").hidden) $("#img-modal").hidden = true;
+    else if (!$("#modal").hidden) $("#modal").hidden = true;
+    else if (!$("#drawer").hidden) closeDrawer();
+    return;
+  }
   if (ev.key === "Enter" && ev.target instanceof Element && ev.target.matches("tr[data-row]")) openDrawer(state.pageRows[+ev.target.dataset.row]);
+});
+document.addEventListener("change", ev => {
+  if (ev.target.id === "chart-kind") { state.chartKind = ev.target.value; updateChart(); }
+  else if (ev.target.id === "chart-measure") { state.chartMeasure = ev.target.value; updateChart(); }
 });
 $("#search-form").addEventListener("submit", ev => { ev.preventDefault(); closeDrawer(); runSearch(); });
 $("#from").addEventListener("change", refresh);
@@ -1800,7 +2194,7 @@ window.addEventListener("dragleave", ev => { if (!hasFiles(ev)) return; dragDept
 window.addEventListener("drop", ev => { if (!hasFiles(ev)) return; ev.preventDefault(); dragDepth = 0; $("#drop").hidden = true; loadFiles(ev.dataTransfer.files); });
 
 let resizeTimer = null;
-window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (state.view === "overview") drawChart(); }, 150); });
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const host = $("#chart"); if (host && state.chartSpec) mountChart(host, state.chartSpec); }, 150); });
 
 /* Démarrage */
 loadSettings();
