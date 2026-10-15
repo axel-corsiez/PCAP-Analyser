@@ -286,6 +286,11 @@ pre.json { margin: 0; font-family: var(--font-data); font-size: 12px; line-heigh
 .sugg-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .sugg { border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-family: var(--font-data); font-size: 12px; cursor: pointer; color: var(--ink-2); }
 .sugg[aria-pressed="true"], .mini[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); }
+.col-item.pick { grid-template-columns: minmax(0, 1fr) auto; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); font: inherit; color: inherit; }
+.col-item.pick:last-child { border-bottom: 0; }
+.col-item.pick[aria-pressed="true"] { background: var(--accent-weak); }
+.col-item.pick[aria-pressed="true"] .col-path { color: var(--accent); }
+.dt-tools { display: flex; flex-wrap: wrap; gap: 4px; }
 .base-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 13px; }
 .base-grid label { display: flex; gap: 6px; align-items: center; }
 .th-x { display: flex; align-items: center; }
@@ -417,6 +422,20 @@ code.jv { font-size: 11.5px; }
       <input id="cols-search" type="search" spellcheck="false" autocomplete="off" placeholder="ex. appId, userAgent, deviceDetail">
     </div>
     <div id="cols-body"></div>
+  </div>
+</aside>
+
+<aside id="chartf-drawer" class="drawer" hidden aria-label="Champ du graphique">
+  <div class="drawer-bar">
+    <span class="drawer-title">Répartir le graphique par champ</span>
+    <button type="button" id="chartf-close" class="btn" data-action="close-chartf">Fermer</button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label for="chartf-search">Chercher un champ des logs</label>
+      <input id="chartf-search" type="search" spellcheck="false" autocomplete="off" placeholder="ex. userAgent, appId, deviceDetail">
+    </div>
+    <div id="chartf-body"></div>
   </div>
 </aside>
 
@@ -1374,11 +1393,20 @@ const CHART_KINDS = [
   { id: "journal", label: "Par journal", title: "Événements par journal", col: "Journal", get: e => e.type, field: () => "journal", fmt: k => TYPES[k] ? TYPES[k].label : k },
 ];
 const TOP_N = 15;
+// « f:chemin » : répartition selon n'importe quel champ des logs (valeurs multiples comptées une à une)
+function chartKindFor(id) {
+  if (id && id.startsWith("f:")) {
+    const path = id.slice(2);
+    return { id, label: `Par ${path}`, title: `Événements par ${path}`, col: path, multi: true, field: () => path,
+      getAll: e => [...new Set(resolve(e.rec, path).filter(x => x !== null && x !== undefined && x !== "").map(valueText))] };
+  }
+  return CHART_KINDS.find(k => k.id === id) || CHART_KINDS[0];
+}
 const emptyVals = () => ({ ok: 0, intr: 0, fail: 0, audit: 0, other: 0 });
 const lcFirst = s => /^[A-ZÉ][a-zàâçéèêëîïôûùüÿ]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 
 function eventChartSpec(kindId, entries) {
-  const kind = CHART_KINDS.find(k => k.id === kindId) || CHART_KINDS[0];
+  const kind = chartKindFor(kindId);
   const present = new Set();
   const add = (c, e) => { const s = seriesOf(e); c.vals[s]++; c.total++; present.add(s); };
   let spec;
@@ -1409,20 +1437,25 @@ function eventChartSpec(kindId, entries) {
       hint: "Repérez l'activité en dehors des heures de bureau." };
   } else {
     const m = new Map();
-    let empty = 0;
+    let empty = 0, multiple = 0;
     for (const e of entries) {
-      const v = kind.get(e);
-      if (v === "" || v === null || v === undefined) { empty++; continue; }
-      const k = String(v);
-      let c = m.get(k);
-      if (!c) { const lbl = kind.fmt ? kind.fmt(k) : k; m.set(k, (c = { key: k, label: lbl, long: lbl, data: lbl, field: kind.field(e), vals: emptyVals(), total: 0 })); }
-      add(c, e);
+      const vs = kind.multi ? kind.getAll(e) : [kind.get(e)].filter(v => v !== "" && v !== null && v !== undefined).map(String);
+      if (!vs.length) { empty++; continue; }
+      if (vs.length > 1) multiple++;
+      for (const k of vs) {
+        let c = m.get(k);
+        if (!c) { const lbl = kind.fmt ? kind.fmt(k) : k; m.set(k, (c = { key: k, label: lbl, long: lbl, data: lbl, field: kind.field(e), vals: emptyVals(), total: 0 })); }
+        add(c, e);
+      }
     }
     const all = [...m.values()].sort((a, b) => b.total - a.total || coll.compare(a.label, b.label));
     spec = { type: "bars", cats: all.slice(0, TOP_N), drill: "filter", catLabel: kind.col,
       title: `${kind.title} (${all.length > TOP_N ? `${TOP_N} premières valeurs sur ${nf.format(all.length)}` : `${nf.format(all.length)} valeur${all.length > 1 ? "s" : ""}`})`,
       hint: "Cliquez sur une barre pour filtrer sur cette valeur.",
-      note: empty ? `${nf.format(empty)} événement${empty > 1 ? "s" : ""} sans valeur pour ce critère` : "" };
+      note: [
+        empty ? `${nf.format(empty)} événement${empty > 1 ? "s" : ""} sans valeur pour ce critère` : "",
+        multiple ? `${nf.format(multiple)} événement${multiple > 1 ? "s" : ""} à plusieurs valeurs, compté${multiple > 1 ? "s" : ""} dans chaque barre concernée` : "",
+      ].filter(Boolean).join(" · ") };
   }
   spec.series = SERIES.filter(s => present.has(s.key));
   spec.legend = true;  // même avec un seul état, la légende dit s'il s'agit de succès ou d'échecs
@@ -1454,11 +1487,14 @@ function textWidth(s, font) {
   measureCtx.font = font;
   return measureCtx.measureText(s).width;
 }
-function fitText(s, max, font) {
+// fonts : une police ou une liste ; on retient la plus large pour ne jamais rogner le texte
+function fitText(s, max, fonts) {
   s = String(s);
-  if (textWidth(s, font) <= max) return s;
+  const list = Array.isArray(fonts) ? fonts : [fonts];
+  const width = t => Math.max(...list.map(f => textWidth(t, f)));
+  if (width(s) <= max) return s;
   let lo = 0, hi = s.length;
-  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (textWidth(s.slice(0, mid) + "…", font) <= max) lo = mid; else hi = mid - 1; }
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (width(s.slice(0, mid) + "…") <= max) lo = mid; else hi = mid - 1; }
   return s.slice(0, lo) + "…";
 }
 
@@ -1496,11 +1532,13 @@ function chartSVG(spec, W, exp) {
     H = n * rowH + 4;
     const labelW = Math.round(Math.min(260, Math.max(100, W * 0.3))), valueW = 64;
     const x0 = labelW + 10, pw = Math.max(40, W - x0 - valueW);
-    const max = Math.max(1, ...spec.cats.map(c => c.total)), font = `12px ${fUI}`;
+    const max = Math.max(1, ...spec.cats.map(c => c.total));
+    // dans le PNG, l'image SVG n'a pas accès aux polices web : elle retombe sur la police système
+    const font = exp ? [`12px ${fUI}`, `12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`] : `12px ${fUI}`;
     body += `<line class="axis" x1="${x0}" x2="${x0}" y1="0" y2="${H}"/>`;
     spec.cats.forEach((c, i) => {
       const yTop = i * rowH, yBar = yTop + (rowH - barH) / 2, ss = segs(c);
-      body += `<text class="lbl" x="${labelW}" y="${yTop + rowH / 2 + 4}" text-anchor="end">${esc(fitText(c.label, labelW - 4, font))}</text>`;
+      body += `<text class="lbl" x="${labelW}" y="${yTop + rowH / 2 + 4}" text-anchor="end">${esc(fitText(c.label, labelW - (exp ? 8 : 4), font))}</text>`;
       let x = x0;
       ss.forEach((s, j) => {
         const w = Math.max(2, c.vals[s.key] / max * pw), last = j === ss.length - 1;
@@ -1581,15 +1619,24 @@ function chartDrill(spec, c) {
   }
 }
 
-function chartPanelHTML() {
-  let ctrl;
+function chartCtrlHTML() {
   if (state.view === "table" && state.kind === "analysis") {
     const nums = state.cols.filter(c => c.num);
-    if (!nums.length) return "";
-    ctrl = `<label for="chart-measure">Mesure</label><select id="chart-measure">${nums.map(c => `<option value="${esc(c.key)}"${c.key === state.chartMeasure ? " selected" : ""}>${esc(c.label)}</option>`).join("")}</select>`;
-  } else {
-    ctrl = `<label for="chart-kind">Afficher</label><select id="chart-kind">${CHART_KINDS.map(k => `<option value="${k.id}"${k.id === state.chartKind ? " selected" : ""}>${esc(k.label)}</option>`).join("")}</select>`;
+    if (!nums.length) return null;
+    return `<label for="chart-measure">Mesure</label><select id="chart-measure">${nums.map(c => `<option value="${esc(c.key)}"${c.key === state.chartMeasure ? " selected" : ""}>${esc(c.label)}</option>`).join("")}</select>`;
   }
+  const cur = state.chartKind.startsWith("f:") ? state.chartKind.slice(2) : null;
+  const fields = [...new Set([...state.extraCols, ...(cur ? [cur] : [])])];
+  const opt = (v, l) => `<option value="${esc(v)}"${v === state.chartKind ? " selected" : ""}>${esc(l)}</option>`;
+  return `<label for="chart-kind">Afficher</label><select id="chart-kind">
+      <optgroup label="Vues prédéfinies">${CHART_KINDS.map(k => opt(k.id, k.label)).join("")}</optgroup>
+      ${fields.length ? `<optgroup label="Champs des logs">${fields.map(f => opt("f:" + f, `Par ${f}`)).join("")}</optgroup>` : ""}
+      <option value="pick">Choisir un autre champ…</option>
+    </select>`;
+}
+function chartPanelHTML() {
+  const ctrl = chartCtrlHTML();
+  if (ctrl === null) return "";
   return `<section class="panel chart-panel" aria-labelledby="chart-title">
       <div class="panel-head"><h3 id="chart-title">Graphique</h3><div class="chart-ctrl">${ctrl}</div></div>
       <div id="chart" class="chart"></div>
@@ -1856,7 +1903,7 @@ function renderTable(v) {
 /* ---------- Tiroir de détail ---------- */
 function openDrawer(e) {
   if (!e) return;
-  closeCols();
+  closeCols(); closeChartField();
   state.current = e;
   const v = rowView(e);
   const fields = KEY_FIELDS[e.type === "audit" ? "audit" : "signin"];
@@ -1868,7 +1915,7 @@ function openDrawer(e) {
       const extra = path === "status.errorCode" && AADSTS[Number(x)] ? `<small>${esc(AADSTS[Number(x)])}</small>` : "";
       return `<div class="kv-item"><span class="kv-val">${esc(s)}${extra}</span><button type="button" class="mini" data-f="${esc(path)}" data-v="${esc(s)}">Filtrer</button></div>`;
     }).join("");
-    const tg = path === "fichier" ? "" : (() => { const on = state.extraCols.includes(path); return `<button type="button" class="mini" data-addcol="${esc(path)}" aria-pressed="${on}" title="Afficher ce champ en colonne du tableau">${on ? "✓ En colonne" : "+ Colonne"}</button>`; })();
+    const tg = path === "fichier" ? "" : (() => { const on = state.extraCols.includes(path); return `<span class="dt-tools"><button type="button" class="mini" data-addcol="${esc(path)}" aria-pressed="${on}" title="Afficher ce champ en colonne du tableau">${on ? "✓ En colonne" : "+ Colonne"}</button><button type="button" class="mini" data-chartfield="${esc(path)}" title="Répartir le graphique selon ce champ">Graphique</button></span>`; })();
     return `<div class="kv-row"><dt><span>${esc(label)}</span>${tg}</dt><dd>${items}</dd></div>`;
   }).join("");
   $("#drawer-body").innerHTML = `
@@ -2059,6 +2106,7 @@ function fieldIndex() {
 function dataChanged() {
   state.fieldIndex = null;
   if (!$("#cols-drawer").hidden) renderColsBody();
+  if (!$("#chartf-drawer").hidden) renderChartFieldBody();
 }
 
 function colsChanged() {
@@ -2093,12 +2141,55 @@ function refocus(attr, val) {
   if (el) el.focus();
 }
 function openCols() {
-  closeDrawer();
+  closeDrawer(); closeChartField();
   $("#cols-drawer").hidden = false;
   renderColsBody();
   $("#cols-search").focus();
 }
 function closeCols() { $("#cols-drawer").hidden = true; }
+
+function openChartField() {
+  closeDrawer(); closeCols();
+  $("#chartf-drawer").hidden = false;
+  renderChartFieldBody();
+  $("#chartf-search").focus();
+}
+function closeChartField() { $("#chartf-drawer").hidden = true; }
+function setChartField(path) {
+  state.chartKind = "f:" + path;
+  closeChartField(); closeDrawer();
+  const host = $("#chart");
+  if (!host || (state.view === "table" && state.kind === "analysis")) {
+    toast(`Graphique réglé sur « ${path} » : il s'affichera dans la vue d'ensemble et les recherches.`);
+    return;
+  }
+  $(".chart-ctrl").innerHTML = chartCtrlHTML();
+  updateChart();
+  host.closest(".chart-panel").scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth", block: "start" });
+}
+function renderChartFieldBody() {
+  const { scanned, fields } = fieldIndex();
+  const known = new Set(fields.map(f => f.path));
+  const q = $("#chartf-search").value.trim().toLowerCase();
+  const cur = state.chartKind.startsWith("f:") ? state.chartKind.slice(2) : null;
+  const chip = p => `<button type="button" class="sugg" data-chartfield="${esc(p)}" aria-pressed="${p === cur}">${esc(p)}</button>`;
+  const cols = state.extraCols.filter(p => known.has(p));
+  const sugg = SUGGESTED_FIELDS.filter(p => known.has(p));
+  const shown = q ? fields.filter(f => f.path.toLowerCase().includes(q)) : fields;
+  const LIMIT = 400;
+  const list = shown.slice(0, LIMIT).map(f => `<button type="button" class="col-item pick" data-chartfield="${esc(f.path)}" aria-pressed="${f.path === cur}">
+      <span class="col-path">${esc(f.path)}</span>
+      <span class="col-meta">${pctLabel(f.n, scanned)} · ${[...f.types].map(t => TYPES[t].short).join(" ")}</span>
+    </button>`).join("");
+  $("#chartf-body").innerHTML = `
+    <p class="muted small">Le graphique compte les événements par valeur du champ choisi (les ${TOP_N} plus fréquentes), avec la recherche et les filtres en cours. Un clic sur une barre filtre sur sa valeur.</p>
+    ${cols.length ? `<section class="cols-sec"><h3 class="side-title">Colonnes du tableau</h3><div class="sugg-list">${cols.map(chip).join("")}</div></section>` : ""}
+    ${sugg.length ? `<section class="cols-sec"><h3 class="side-title">Champs utiles en investigation</h3><div class="sugg-list">${sugg.map(chip).join("")}</div></section>` : ""}
+    <section class="cols-sec"><h3 class="side-title">Tous les champs des logs (${nf.format(shown.length)}${q ? ` sur ${nf.format(fields.length)}` : ""})</h3>
+      ${list ? `<div class="col-list">${list}</div>` : `<p class="muted small">Aucun champ ne contient « ${esc(q)} ».</p>`}
+      ${shown.length > LIMIT ? `<p class="muted small">Affinez la recherche pour voir les ${nf.format(shown.length - LIMIT)} autres champs.</p>` : ""}
+    </section>`;
+}
 
 function pctLabel(n, total) {
   const p = total ? n / total * 100 : 0;
@@ -2348,6 +2439,7 @@ function action(a) {
     case "chart-data": chartExport("data"); break;
     case "clear": state.entries = []; state.files = []; state.sample = false; state.view = "overview"; state.last = null; closeDrawer(); dataChanged(); render(); scheduleCounts(); break;
     case "open-cols": openCols(); break;
+    case "close-chartf": closeChartField(); break;
     case "close-cols": closeCols(); break;
     case "sample": loadSample(); render(); scheduleCounts(); break;
   }
@@ -2376,6 +2468,8 @@ document.addEventListener("click", ev => {
   if (rc) { toggleCol(rc.dataset.rmcol, false); return; }
   const mv = t.closest("[data-colmove]");
   if (mv) { moveCol(mv.dataset.colmove, +mv.dataset.dir); return; }
+  const cf = t.closest("[data-chartfield]");
+  if (cf) { setChartField(cf.dataset.chartfield); return; }
   const sg = t.closest("[data-sugg]");
   if (sg) { toggleCol(sg.dataset.sugg); refocus("data-sugg", sg.dataset.sugg); return; }
   const ad = t.closest("[data-addcol]");
@@ -2399,17 +2493,22 @@ document.addEventListener("keydown", ev => {
     else if (!$("#modal").hidden) $("#modal").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
     else if (!$("#cols-drawer").hidden) closeCols();
+    else if (!$("#chartf-drawer").hidden) closeChartField();
     return;
   }
   if (ev.key === "Enter" && ev.target instanceof Element && ev.target.matches("tr[data-row]")) openDrawer(state.pageRows[+ev.target.dataset.row]);
 });
 document.addEventListener("change", ev => {
-  if (ev.target.id === "chart-kind") { state.chartKind = ev.target.value; updateChart(); }
+  if (ev.target.id === "chart-kind") {
+    if (ev.target.value === "pick") { ev.target.value = state.chartKind; openChartField(); }
+    else { state.chartKind = ev.target.value; updateChart(); }
+  }
   else if (ev.target.id === "chart-measure") { state.chartMeasure = ev.target.value; updateChart(); }
   else if (ev.target.matches("[data-colfield]")) { toggleCol(ev.target.dataset.colfield, ev.target.checked); refocus("data-colfield", ev.target.dataset.colfield); }
   else if (ev.target.matches("[data-colbase]")) { toggleBase(ev.target.dataset.colbase, ev.target.checked); refocus("data-colbase", ev.target.dataset.colbase); }
 });
 $("#cols-search").addEventListener("input", () => renderColsBody());
+$("#chartf-search").addEventListener("input", () => renderChartFieldBody());
 $("#search-form").addEventListener("submit", ev => { ev.preventDefault(); closeDrawer(); runSearch(); });
 $("#from").addEventListener("change", refresh);
 $("#to").addEventListener("change", refresh);
