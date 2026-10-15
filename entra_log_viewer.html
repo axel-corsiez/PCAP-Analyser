@@ -270,6 +270,31 @@ pre.json { margin: 0; font-family: var(--font-data); font-size: 12px; line-heigh
 .modal-box p { color: var(--ink-2); margin: 6px 0 10px; }
 .modal-box textarea { width: 100%; height: 240px; font-family: var(--font-data); font-size: 12px; border: 1px solid var(--line-2); border-radius: 6px; padding: 8px; background: var(--surface-2); }
 .modal-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+/* Sélecteur de colonnes */
+.drawer .field input { width: 100%; }
+.cols-sec { margin-top: 18px; }
+.col-added { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.col-added li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+.col-added .col-path { flex: 1 1 auto; min-width: 0; }
+.col-tools { display: flex; gap: 4px; }
+.col-path { font-family: var(--font-data); font-size: 12.5px; overflow-wrap: anywhere; }
+.col-meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.col-list { display: flex; flex-direction: column; max-height: 46vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.col-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.col-item:last-child { border-bottom: 0; }
+.col-item:hover { background: var(--hover); }
+.sugg-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.sugg { border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-family: var(--font-data); font-size: 12px; cursor: pointer; color: var(--ink-2); }
+.sugg[aria-pressed="true"], .mini[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); }
+.base-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 13px; }
+.base-grid label { display: flex; gap: 6px; align-items: center; }
+.th-x { display: flex; align-items: center; }
+table.res th button.xh { font-family: var(--font-data); font-weight: 500; }
+table.res th button.th-rm { width: auto; padding: 4px 8px 4px 0; color: var(--muted); font-size: 15px; line-height: 1; }
+table.res th button.th-rm:hover { color: var(--bad); }
+td.xcol { min-width: 140px; max-width: 340px; font-family: var(--font-data); font-size: 12px; color: var(--ink-2); }
+code.jv { font-size: 11.5px; }
+.kv dt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .modal-box.wide { width: min(1000px, 100%); max-height: calc(100vh - 32px); overflow: auto; }
 .modal-box img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
 
@@ -381,6 +406,20 @@ pre.json { margin: 0; font-family: var(--font-data); font-size: 12px; line-heigh
   <div id="drawer-body" class="drawer-body"></div>
 </aside>
 
+<aside id="cols-drawer" class="drawer" hidden aria-label="Colonnes du tableau">
+  <div class="drawer-bar">
+    <span class="drawer-title">Colonnes du tableau</span>
+    <button type="button" id="cols-close" class="btn" data-action="close-cols">Fermer</button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label for="cols-search">Chercher un champ des logs</label>
+      <input id="cols-search" type="search" spellcheck="false" autocomplete="off" placeholder="ex. appId, userAgent, deviceDetail">
+    </div>
+    <div id="cols-body"></div>
+  </div>
+</aside>
+
 <div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-box">
     <h2 id="modal-title">Copier le texte</h2>
@@ -420,10 +459,10 @@ const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").mat
 const CAN_DOWNLOAD = location.protocol === "file:" || (() => { try { return window.top === window.self; } catch (_) { return false; } })();
 
 const TYPES = {
-  interactive: { label: "Interactives", tag: "Interactive" },
-  noninteractive: { label: "Non interactives", tag: "Non interactive" },
-  app: { label: "Applications", tag: "Application" },
-  audit: { label: "Audit", tag: "Audit" },
+  interactive: { label: "Interactives", tag: "Interactive", short: "INT" },
+  noninteractive: { label: "Non interactives", tag: "Non interactive", short: "NINT" },
+  app: { label: "Applications", tag: "Application", short: "APP" },
+  audit: { label: "Audit", tag: "Audit", short: "AUD" },
 };
 const SIGNIN = new Set(["interactive", "noninteractive", "app"]);
 // Codes qui ne sont pas de vrais échecs : étapes normales d'une connexion (MFA demandée, « Rester connecté ? »…)
@@ -967,7 +1006,7 @@ const CSV_EVENT = [
 const KEY_FIELDS = {
   signin: [
     ["Utilisateur", "userPrincipalName"], ["Nom", "userDisplayName"], ["Service principal", "servicePrincipalName"],
-    ["Application", "appDisplayName"], ["Ressource", "resourceDisplayName"], ["Adresse IP", "ipAddress"],
+    ["Application", "appDisplayName"], ["App ID", "appId"], ["Ressource", "resourceDisplayName"], ["Adresse IP", "ipAddress"],
     ["Ville", "location.city"], ["Pays", "location.countryOrRegion"], ["Client", "clientAppUsed"],
     ["Protocole", "authenticationProtocol"], ["Exigence", "authenticationRequirement"],
     ["Accès conditionnel", "conditionalAccessStatus"], ["Risque", "riskLevelDuringSignIn"],
@@ -994,6 +1033,7 @@ const state = {
   view: "overview", kind: "events", rows: [], cols: EVENT_COLS, meta: {},
   sort: { key: "date", dir: -1 }, page: 0, pageRows: [], last: null,
   activePreset: null, current: null, counts: null, lastQuery: "", chartKind: "timeline", chartMeasure: null, chartSpec: null,
+  extraCols: [], hiddenBase: new Set(), fieldIndex: null,
   settings: { home: "FR", bf: 5, spray: 5, vmax: 900 },
 };
 const SETTINGS_KEY = "entra-forensic-parametres";
@@ -1025,7 +1065,7 @@ function runSearch(meta) {
     else { state.activePreset = null; meta = { title: q ? "Recherche" : "Tous les événements", desc: "" }; }
   }
   const rows = baseEntries().filter(e => matches(e, parsed));
-  Object.assign(state, { view: "table", kind: "events", rows, cols: EVENT_COLS, meta, page: 0, sort: { key: "date", dir: -1 }, last: { type: "search", meta }, lastQuery: q });
+  Object.assign(state, { view: "table", kind: "events", rows, cols: eventCols(), meta, page: 0, sort: { key: "date", dir: -1 }, last: { type: "search", meta }, lastQuery: q });
   sortRows();
   render();
 }
@@ -1087,6 +1127,7 @@ function sortRows() {
     get = key === "date" ? e => e.ts
       : key === "type" ? e => TYPES[e.type].tag
       : key === "status" ? e => { const v = rowView(e); return v.code ?? (v.state === "fail" ? 1 : 0); }
+      : key.startsWith("x:") ? e => joinVals(resolve(e.rec, key.slice(2)))
       : e => rowView(e)[key] ?? "";
   } else {
     get = r => { const v = r[key]; return Array.isArray(v) ? v.join(", ") : v; };
@@ -1728,16 +1769,26 @@ function chartExport(kind) {
 function eventRow(e, i) {
   const v = rowView(e);
   const cell = (val, field, cls = "") => `<td${cls ? ` class="${cls}"` : ""}>${val ? (field ? pvBtn(field, val) : esc(val)) : nil}</td>`;
-  return `<tr data-row="${i}" tabindex="0" class="st-${v.state}">
-    <td class="mono nowrap">${esc(fmtDate(e.ts)) || nil}</td>
-    <td><span class="tag">${esc(TYPES[e.type].tag)}</span></td>
-    ${cell(v.who, v.whoField)}
-    ${cell(v.what, v.whatField)}
-    ${cell(v.ip, v.ipField, "mono nowrap")}
-    <td>${v.place ? (v.country ? pvBtn("location.countryOrRegion", v.country, v.place) : esc(v.place)) : nil}</td>
-    <td class="wrap">${v.detail ? esc(v.detail) : nil}</td>
-    <td>${statusPill(v)}</td>
-  </tr>`;
+  const tds = state.cols.map(c => {
+    switch (c.key) {
+      case "date": return `<td class="mono nowrap">${esc(fmtDate(e.ts)) || nil}</td>`;
+      case "type": return `<td><span class="tag">${esc(TYPES[e.type].tag)}</span></td>`;
+      case "who": return cell(v.who, v.whoField);
+      case "what": return cell(v.what, v.whatField);
+      case "ip": return cell(v.ip, v.ipField, "mono nowrap");
+      case "place": return `<td>${v.place ? (v.country ? pvBtn("location.countryOrRegion", v.country, v.place) : esc(v.place)) : nil}</td>`;
+      case "detail": return `<td class="wrap">${v.detail ? esc(v.detail) : nil}</td>`;
+      case "status": return `<td>${statusPill(v)}</td>`;
+      default: return extraCell(e, c.path);
+    }
+  }).join("");
+  return `<tr data-row="${i}" tabindex="0" class="st-${v.state}">${tds}</tr>`;
+}
+function extraCell(e, path) {
+  const vals = resolve(e.rec, path).filter(x => x !== null && x !== undefined && x !== "");
+  if (!vals.length) return `<td class="xcol">${nil}</td>`;
+  const shown = vals.slice(0, 6).map(x => typeof x === "object" ? `<code class="jv">${esc(JSON.stringify(x))}</code>` : pvBtn(path, String(x))).join(", ");
+  return `<td class="xcol">${shown}${vals.length > 6 ? ` <span class="nil">+${vals.length - 6}</span>` : ""}</td>`;
 }
 function fmtCell(v, c, forCsv) {
   if (c.date) return fmtDate(v);
@@ -1762,6 +1813,7 @@ function pager(pages) {
   </nav>`;
 }
 function renderTable(v) {
+  if (state.kind === "events") state.cols = eventCols();
   const { meta, rows, cols, kind } = state;
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   state.page = Math.min(Math.max(0, state.page), pages - 1);
@@ -1769,7 +1821,9 @@ function renderTable(v) {
   state.pageRows = slice;
   const head = cols.map(c => {
     const on = state.sort.key === c.key, dir = state.sort.dir > 0;
-    return `<th scope="col"${c.num ? ' class="num"' : ""} aria-sort="${on ? (dir ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${esc(c.key)}">${esc(c.label)}${on ? (dir ? " ↑" : " ↓") : ""}</button></th>`;
+    const sortBtn = `<button type="button" data-sort="${esc(c.key)}"${c.extra ? ` class="xh" title="Champ ${esc(c.path)}"` : ""}>${esc(c.label)}${on ? (dir ? " ↑" : " ↓") : ""}</button>`;
+    const inner = c.extra ? `<span class="th-x">${sortBtn}<button type="button" class="th-rm" data-rmcol="${esc(c.path)}" title="Retirer la colonne" aria-label="Retirer la colonne ${esc(c.path)}">×</button></span>` : sortBtn;
+    return `<th scope="col"${c.num ? ' class="num"' : ""} aria-sort="${on ? (dir ? "ascending" : "descending") : "none"}">${inner}</th>`;
   }).join("");
   const body = kind === "events"
     ? slice.map(eventRow).join("")
@@ -1789,6 +1843,7 @@ function renderTable(v) {
     </div>
     ${rows.length ? chartPanelHTML() : ""}
     <div class="toolbar">
+      ${kind === "events" ? `<button type="button" class="btn" data-action="open-cols">Colonnes${state.extraCols.length ? ` (+${state.extraCols.length})` : ""}…</button>` : ""}
       <button type="button" class="btn" data-action="copy-csv"${rows.length ? "" : " disabled"}>Copier en CSV</button>
       ${CAN_DOWNLOAD ? `<button type="button" class="btn" data-action="dl-csv"${rows.length ? "" : " disabled"}>Télécharger le CSV</button>` : ""}
       <span class="tz">${kind === "events" ? "Cliquez sur une ligne pour le détail · " : ""}Heures en UTC</span>
@@ -1801,6 +1856,7 @@ function renderTable(v) {
 /* ---------- Tiroir de détail ---------- */
 function openDrawer(e) {
   if (!e) return;
+  closeCols();
   state.current = e;
   const v = rowView(e);
   const fields = KEY_FIELDS[e.type === "audit" ? "audit" : "signin"];
@@ -1812,7 +1868,8 @@ function openDrawer(e) {
       const extra = path === "status.errorCode" && AADSTS[Number(x)] ? `<small>${esc(AADSTS[Number(x)])}</small>` : "";
       return `<div class="kv-item"><span class="kv-val">${esc(s)}${extra}</span><button type="button" class="mini" data-f="${esc(path)}" data-v="${esc(s)}">Filtrer</button></div>`;
     }).join("");
-    return `<div class="kv-row"><dt>${esc(label)}</dt><dd>${items}</dd></div>`;
+    const tg = path === "fichier" ? "" : (() => { const on = state.extraCols.includes(path); return `<button type="button" class="mini" data-addcol="${esc(path)}" aria-pressed="${on}" title="Afficher ce champ en colonne du tableau">${on ? "✓ En colonne" : "+ Colonne"}</button>`; })();
+    return `<div class="kv-row"><dt><span>${esc(label)}</span>${tg}</dt><dd>${items}</dd></div>`;
   }).join("");
   $("#drawer-body").innerHTML = `
     <div class="d-meta"><span class="tag">${esc(TYPES[e.type].tag)}</span>${statusPill(v)}</div>
@@ -1839,8 +1896,9 @@ function csvCell(v) {
 function buildCSV() {
   const lines = [];
   if (state.kind === "events") {
-    lines.push(CSV_EVENT.map(c => csvCell(c[0])).join(";"));
-    for (const e of state.rows) lines.push(CSV_EVENT.map(c => csvCell(c[1](e))).join(";"));
+    const extra = state.extraCols;
+    lines.push([...CSV_EVENT.map(c => c[0]), ...extra].map(v => csvCell(v)).join(";"));
+    for (const e of state.rows) lines.push([...CSV_EVENT.map(c => c[1](e)), ...extra.map(p => joinVals(resolve(e.rec, p)))].map(v => csvCell(v)).join(";"));
   } else {
     lines.push(state.cols.map(c => csvCell(c.label)).join(";"));
     for (const r of state.rows) lines.push(state.cols.map(c => {
@@ -1912,6 +1970,7 @@ async function loadFiles(list) {
   state.typesOn = new Set(Object.keys(TYPES));
   state.view = "overview"; state.last = null; state.activePreset = null;
   closeDrawer();
+  dataChanged();
   render();
   scheduleCounts();
   toast(`${nf.format(added)} événements chargés.`);
@@ -1919,6 +1978,7 @@ async function loadFiles(list) {
 function removeFile(id) {
   state.entries = state.entries.filter(e => e.fid !== id);
   state.files = state.files.filter(f => f.id !== id);
+  dataChanged();
   closeDrawer();
   refresh();
 }
@@ -1928,6 +1988,155 @@ function loadSample() {
   state.typesOn = new Set(Object.keys(TYPES));
   state.view = "overview"; state.last = null; state.activePreset = null;
   $("#load-msg").hidden = true;
+  dataChanged();
+}
+
+/* ================================================================
+   Colonnes personnalisées du tableau d'événements
+   ================================================================ */
+const COLS_KEY = "entra-forensic-colonnes";
+const SUGGESTED_FIELDS = [
+  "appId", "userAgent", "correlationId", "resourceDisplayName", "authenticationProtocol", "authenticationRequirement",
+  "conditionalAccessStatus", "riskLevelDuringSignIn", "riskState", "deviceDetail.operatingSystem", "deviceDetail.browser",
+  "deviceDetail.isCompliant", "deviceDetail.displayName", "location.city", "status.failureReason", "servicePrincipalName",
+  "clientCredentialType", "userId", "id", "mfaDetail.authMethod", "authenticationDetails.authenticationMethod",
+  "appliedConditionalAccessPolicies.displayName", "category", "operationType", "loggedByService", "resultReason",
+  "targetResources.type", "targetResources.modifiedProperties.displayName", "additionalDetails.value",
+];
+const joinVals = vals => vals.filter(x => x !== null && x !== undefined && x !== "").map(valueText).join(", ");
+
+function loadCols() {
+  try {
+    const c = JSON.parse(localStorage.getItem(COLS_KEY) || "null");
+    if (c && Array.isArray(c.extra)) state.extraCols = c.extra.filter(p => typeof p === "string" && /^[\w.@$-]+$/.test(p));
+    if (c && Array.isArray(c.hidden)) state.hiddenBase = new Set(c.hidden.filter(k => k !== "date" && EVENT_COLS.some(x => x.key === k)));
+  } catch (_) { /* stockage indisponible */ }
+}
+function saveCols() {
+  try { localStorage.setItem(COLS_KEY, JSON.stringify({ extra: state.extraCols, hidden: [...state.hiddenBase] })); }
+  catch (_) { /* stockage indisponible */ }
+}
+function eventCols() {
+  return [
+    ...EVENT_COLS.filter(c => !state.hiddenBase.has(c.key)),
+    ...state.extraCols.map(p => ({ key: "x:" + p, label: p, path: p, extra: true })),
+  ];
+}
+
+// Inventaire des champs : chemins pointés de toutes les feuilles, tableaux traversés comme dans resolve()
+function walkFields(v, prefix, out, depth) {
+  if (Array.isArray(v)) {
+    let objs = false;
+    for (const x of v.slice(0, 5)) if (x && typeof x === "object" && !Array.isArray(x)) { objs = true; walkFields(x, prefix, out, depth + 1); }
+    if (!objs && prefix) out.set(prefix, out.get(prefix) || v.some(x => x !== null && x !== ""));
+    return;
+  }
+  if (v && typeof v === "object") {
+    const keys = Object.keys(v);
+    if ((!keys.length || depth > 6) && prefix) { out.set(prefix, out.get(prefix) || keys.length > 0); return; }
+    for (const k of keys) walkFields(v[k], prefix ? `${prefix}.${k}` : k, out, depth + 1);
+    return;
+  }
+  if (prefix) out.set(prefix, out.get(prefix) || (v !== null && v !== undefined && v !== ""));
+}
+function fieldIndex() {
+  if (state.fieldIndex) return state.fieldIndex;
+  const list = state.entries, step = Math.max(1, Math.ceil(list.length / 20000)), idx = new Map();
+  let scanned = 0;
+  for (let i = 0; i < list.length; i += step) {
+    const e = list[i], out = new Map();
+    walkFields(e.rec, "", out, 0);
+    scanned++;
+    for (const [path, has] of out) {
+      let f = idx.get(path);
+      if (!f) idx.set(path, (f = { path, n: 0, types: new Set() }));
+      if (has) f.n++;
+      f.types.add(e.type);
+    }
+  }
+  return (state.fieldIndex = { scanned, fields: [...idx.values()].sort((a, b) => b.n - a.n || coll.compare(a.path, b.path)) });
+}
+function dataChanged() {
+  state.fieldIndex = null;
+  if (!$("#cols-drawer").hidden) renderColsBody();
+}
+
+function colsChanged() {
+  saveCols();
+  if (!$("#cols-drawer").hidden) renderColsBody();
+  if (state.view === "table" && state.kind === "events") render();
+}
+function toggleCol(path, on) {
+  const has = state.extraCols.includes(path);
+  if (on === undefined) on = !has;
+  if (on === has) return;
+  state.extraCols = on ? [...state.extraCols, path] : state.extraCols.filter(p => p !== path);
+  colsChanged();
+}
+function toggleBase(key, on) {
+  if (key === "date") return;
+  if (on) state.hiddenBase.delete(key); else state.hiddenBase.add(key);
+  colsChanged();
+}
+function moveCol(path, dir) {
+  const a = [...state.extraCols], i = a.indexOf(path), j = i + dir;
+  if (i < 0 || j < 0 || j >= a.length) return;
+  [a[i], a[j]] = [a[j], a[i]];
+  state.extraCols = a;
+  colsChanged();
+  const sel = `[data-colmove="${CSS.escape(path)}"]`;
+  const el = document.querySelector(`${sel}[data-dir="${dir}"]:not(:disabled)`) || document.querySelector(`${sel}:not(:disabled)`);
+  if (el) el.focus();
+}
+function refocus(attr, val) {
+  const el = document.querySelector(`#cols-drawer [${attr}="${CSS.escape(val)}"]`);
+  if (el) el.focus();
+}
+function openCols() {
+  closeDrawer();
+  $("#cols-drawer").hidden = false;
+  renderColsBody();
+  $("#cols-search").focus();
+}
+function closeCols() { $("#cols-drawer").hidden = true; }
+
+function pctLabel(n, total) {
+  const p = total ? n / total * 100 : 0;
+  return p === 0 ? "toujours vide" : p < 1 ? "< 1 %" : `${Math.round(p)} %`;
+}
+function renderColsBody() {
+  const { scanned, fields } = fieldIndex();
+  const known = new Set(fields.map(f => f.path));
+  const q = $("#cols-search").value.trim().toLowerCase();
+  const n = state.extraCols.length;
+  const added = n
+    ? `<ol class="col-added">${state.extraCols.map((p, i) => `<li>
+        <span class="col-path">${esc(p)}</span>${known.has(p) ? "" : '<span class="col-meta">absent des données chargées</span>'}
+        <span class="col-tools">
+          <button type="button" class="mini" data-colmove="${esc(p)}" data-dir="-1" aria-label="Monter ${esc(p)}"${i === 0 ? " disabled" : ""}>↑</button>
+          <button type="button" class="mini" data-colmove="${esc(p)}" data-dir="1" aria-label="Descendre ${esc(p)}"${i === n - 1 ? " disabled" : ""}>↓</button>
+          <button type="button" class="mini" data-rmcol="${esc(p)}">Retirer</button>
+        </span></li>`).join("")}</ol>`
+    : `<p class="muted small">Aucune colonne ajoutée : cochez un champ ci-dessous ou utilisez « + Colonne » dans le détail d'un événement.</p>`;
+  const sugg = SUGGESTED_FIELDS.filter(p => known.has(p));
+  const shown = q ? fields.filter(f => f.path.toLowerCase().includes(q)) : fields;
+  const LIMIT = 400;
+  const list = shown.slice(0, LIMIT).map(f => `<label class="col-item">
+      <input type="checkbox" data-colfield="${esc(f.path)}"${state.extraCols.includes(f.path) ? " checked" : ""}>
+      <span class="col-path">${esc(f.path)}</span>
+      <span class="col-meta" title="Rempli dans ${pctLabel(f.n, scanned)} des événements · journaux : ${[...f.types].map(t => TYPES[t].label).join(", ")}">${pctLabel(f.n, scanned)} · ${[...f.types].map(t => TYPES[t].short).join(" ")}</span>
+    </label>`).join("");
+  $("#cols-body").innerHTML = `
+    <section class="cols-sec"><h3 class="side-title">Colonnes ajoutées (${n})</h3>${added}</section>
+    ${sugg.length ? `<section class="cols-sec"><h3 class="side-title">Champs utiles en investigation</h3><div class="sugg-list">${sugg.map(p => `<button type="button" class="sugg" data-sugg="${esc(p)}" aria-pressed="${state.extraCols.includes(p)}">${esc(p)}</button>`).join("")}</div></section>` : ""}
+    <section class="cols-sec"><h3 class="side-title">Colonnes de base</h3>
+      <div class="base-grid">${EVENT_COLS.map(c => `<label><input type="checkbox" data-colbase="${c.key}"${state.hiddenBase.has(c.key) ? "" : " checked"}${c.key === "date" ? " disabled" : ""}>${esc(c.label)}</label>`).join("")}</div>
+    </section>
+    <section class="cols-sec"><h3 class="side-title">Tous les champs des logs (${nf.format(shown.length)}${q ? ` sur ${nf.format(fields.length)}` : ""})</h3>
+      ${list ? `<div class="col-list">${list}</div>` : `<p class="muted small">Aucun champ ne contient « ${esc(q)} ».</p>`}
+      ${shown.length > LIMIT ? `<p class="muted small">Affinez la recherche pour voir les ${nf.format(shown.length - LIMIT)} autres champs.</p>` : ""}
+      <p class="muted small">Le pourcentage indique la part des événements où le champ est rempli${scanned < state.entries.length ? `, mesurée sur un échantillon de ${nf.format(scanned)} événements` : ""}. INT, NINT, APP et AUD : journaux où le champ apparaît.</p>
+    </section>`;
 }
 
 /* ================================================================
@@ -2137,7 +2346,9 @@ function action(a) {
     case "chart-png": chartExport("png"); break;
     case "chart-copy": chartExport("copy"); break;
     case "chart-data": chartExport("data"); break;
-    case "clear": state.entries = []; state.files = []; state.sample = false; state.view = "overview"; state.last = null; closeDrawer(); render(); scheduleCounts(); break;
+    case "clear": state.entries = []; state.files = []; state.sample = false; state.view = "overview"; state.last = null; closeDrawer(); dataChanged(); render(); scheduleCounts(); break;
+    case "open-cols": openCols(); break;
+    case "close-cols": closeCols(); break;
     case "sample": loadSample(); render(); scheduleCounts(); break;
   }
 }
@@ -2161,6 +2372,22 @@ document.addEventListener("click", ev => {
   }
   const rm = t.closest("[data-remove]");
   if (rm) { removeFile(+rm.dataset.remove); return; }
+  const rc = t.closest("[data-rmcol]");
+  if (rc) { toggleCol(rc.dataset.rmcol, false); return; }
+  const mv = t.closest("[data-colmove]");
+  if (mv) { moveCol(mv.dataset.colmove, +mv.dataset.dir); return; }
+  const sg = t.closest("[data-sugg]");
+  if (sg) { toggleCol(sg.dataset.sugg); refocus("data-sugg", sg.dataset.sugg); return; }
+  const ad = t.closest("[data-addcol]");
+  if (ad) {
+    const path = ad.dataset.addcol;
+    toggleCol(path);
+    const on = state.extraCols.includes(path);
+    ad.setAttribute("aria-pressed", String(on));
+    ad.textContent = on ? "✓ En colonne" : "+ Colonne";
+    toast(on ? `Colonne « ${path} » ajoutée au tableau.` : `Colonne « ${path} » retirée.`);
+    return;
+  }
   const ac = t.closest("[data-action]");
   if (ac) { action(ac.dataset.action); return; }
   const row = t.closest("tr[data-row]");
@@ -2171,6 +2398,7 @@ document.addEventListener("keydown", ev => {
     if (!$("#img-modal").hidden) $("#img-modal").hidden = true;
     else if (!$("#modal").hidden) $("#modal").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
+    else if (!$("#cols-drawer").hidden) closeCols();
     return;
   }
   if (ev.key === "Enter" && ev.target instanceof Element && ev.target.matches("tr[data-row]")) openDrawer(state.pageRows[+ev.target.dataset.row]);
@@ -2178,7 +2406,10 @@ document.addEventListener("keydown", ev => {
 document.addEventListener("change", ev => {
   if (ev.target.id === "chart-kind") { state.chartKind = ev.target.value; updateChart(); }
   else if (ev.target.id === "chart-measure") { state.chartMeasure = ev.target.value; updateChart(); }
+  else if (ev.target.matches("[data-colfield]")) { toggleCol(ev.target.dataset.colfield, ev.target.checked); refocus("data-colfield", ev.target.dataset.colfield); }
+  else if (ev.target.matches("[data-colbase]")) { toggleBase(ev.target.dataset.colbase, ev.target.checked); refocus("data-colbase", ev.target.dataset.colbase); }
 });
+$("#cols-search").addEventListener("input", () => renderColsBody());
 $("#search-form").addEventListener("submit", ev => { ev.preventDefault(); closeDrawer(); runSearch(); });
 $("#from").addEventListener("change", refresh);
 $("#to").addEventListener("change", refresh);
@@ -2198,6 +2429,7 @@ window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer
 
 /* Démarrage */
 loadSettings();
+loadCols();
 buildPresets();
 loadSample();
 render();
